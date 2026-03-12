@@ -1,13 +1,12 @@
-import streamlit as st
+import os
+# Disable CrewAI telemetry BEFORE any crewai imports to avoid signal handler errors
+os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
+
 import streamlit as st
 from crewai import Agent, Task, Crew, LLM, Process
 from dotenv import load_dotenv
 from crewai_tools import ScrapeWebsiteTool
-import os
 import time
-
-# Disable CrewAI telemetry to avoid signal handler errors
-os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
 
 load_dotenv()
 
@@ -308,7 +307,15 @@ if process_clicked:
 
 # Display History in Sidebar
 if st.session_state.history:
+    st.sidebar.markdown("---")
     st.sidebar.markdown("### 🕰️ Your History")
+    
+    # Add Clear History Button
+    if st.sidebar.button("🗑️ Clear History", use_container_width=True):
+        st.session_state.history = []
+        st.session_state.result = None
+        st.rerun()
+
     for i, item in enumerate(reversed(st.session_state.history)):
         with st.sidebar.expander(f"Email for {item['url']} ({len(st.session_state.history) - i})"):
             st.markdown(item["email"])
