@@ -131,15 +131,16 @@ with col_company:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Optional logic for services configuration
-with st.expander("🛠️ Agency Services Knowledge Base (Click to edit)"):
-    agency_services = st.text_area(
-        "What services do you offer?",
-        value="""1. Web Scraping: Extracting data from websites for various purposes such as market research, competitive analysis, or content aggregation.
+# Agency Services Knowledge Base (Read-only)
+AGENCY_SERVICES = """1. Web Scraping: Extracting data from websites for various purposes such as market research, competitive analysis, or content aggregation.
 2. Data Analysis: Analyzing data to uncover patterns, trends, and insights that can inform business decisions.
-3. Content Generation: Creating written content such as articles, blog posts, or social media updates""",
-        height=150
-    )
+3. Content Generation: Creating written content such as articles, blog posts, or social media updates"""
+
+with st.expander("🛠️ Agency Services Knowledge Base"):
+    st.markdown("### 📋 What services we offer")
+    st.info(AGENCY_SERVICES)
+    # Using a hidden or internal variable for the crew to use
+    agency_services = AGENCY_SERVICES
 
 st.markdown("<br>", unsafe_allow_html=True)
 
