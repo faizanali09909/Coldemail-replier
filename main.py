@@ -64,13 +64,8 @@ st.markdown("""
         box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.5), 0 4px 6px -2px rgba(59, 130, 246, 0.3);
     }
     
-    /* Result Box / Glassmorphism */
+    /* Result Box / Transparent Styling */
     .result-box {
-        background: rgba(255, 255, 255, 0.6);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         padding: 2rem;
         border-radius: 16px;
         margin-top: 1rem;
@@ -269,7 +264,11 @@ if process_clicked:
                 st.session_state.result = result
                 
                 # Save to history
+                # Extract a clean name from the URL
+                display_name = target_url.replace("https://", "").replace("http://", "").replace("www.", "").split('/')[0].split('.')[0].capitalize()
+                
                 st.session_state.history.append({
+                    "name": display_name,
                     "url": target_url,
                     "email": result
                 })
@@ -318,7 +317,8 @@ if st.session_state.history:
         st.rerun()
 
     for i, item in enumerate(reversed(st.session_state.history)):
-        with st.sidebar.expander(f"Email for {item['url']} ({len(st.session_state.history) - i})"):
+        # Display as name instead of URL link
+        with st.sidebar.expander(f"Email for {item.get('name', 'Company')} ({len(st.session_state.history) - i})"):
             st.markdown(item["email"])
 
 # Footer
