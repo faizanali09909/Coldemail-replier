@@ -81,6 +81,24 @@ st.markdown("""
         border-radius: 8px;
     }
     
+    /* Custom Footer Box */
+    .footer-box {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-top: 3rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .footer-text {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 700;
+        font-size: 1.2rem;
+        margin: 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -143,6 +161,18 @@ st.markdown("<br>", unsafe_allow_html=True)
 colact1, colact2, colact3 = st.columns([1, 2, 1])
 with colact2:
     process_clicked = st.button("🚀 Generate Winning Email", use_container_width=True)
+
+def clean_output(text):
+    # Remove phrases like "Thought: I now can give a great answer."
+    patterns = [
+        r"^Thought:\s*I now can give a great answer\.\s*",
+        r"^Thought:\s*I've got the final answer\s*",
+        r"^Final Answer:\s*"
+    ]
+    cleaned = text
+    for pattern in patterns:
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
 
 def run_crew_with_retry(crew, inputs=None, max_retries=5):
     """Run crew with retry logic for handling rate limit and 503 errors"""
@@ -260,7 +290,8 @@ if process_clicked:
                 )
 
                 # Execute with retry
-                result = run_crew_with_retry(sales_crew)
+                raw_result = run_crew_with_retry(sales_crew)
+                result = clean_output(str(raw_result))
                 st.session_state.result = result
                 
                 # Save to history
@@ -322,5 +353,9 @@ if st.session_state.history:
             st.markdown(item["email"])
 
 # Footer
-st.markdown("---")
-st.markdown("<p style='text-align: center; color: #888;'>Powered by CrewAI & Groq (Llama 3.3 70B Versatile) 🚀</p>", unsafe_allow_html=True)
+st.markdown("""
+<div class='footer-box'>
+    <p class='footer-text'>✨ This website is made by Faizan Ali ✨</p>
+    <p style='color: #94a3b8; font-size: 0.8rem; margin-top: 5px;'>Powered by CrewAI & Groq (Llama 3.3 70B Versatile) 🚀</p>
+</div>
+""", unsafe_allow_html=True)
