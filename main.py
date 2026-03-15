@@ -118,9 +118,8 @@ if 'result' not in st.session_state:
 
 # Sidebar Configuration
 st.sidebar.markdown("<h2 style='text-align: center; color: #1e3a8a;'>⚙️ Configuration</h2>", unsafe_allow_html=True)
-st.sidebar.info("🔑 Enter your API key below. You can get a free one at [console.groq.com](https://console.groq.com/keys).")
-user_api_key = st.sidebar.text_input("Groq API Key", type="password", placeholder="gsk_...")
-user_model = st.sidebar.text_input("Groq Model", value="groq/llama-3.3-70b-versatile")
+st.sidebar.info("🚀 Powered by Groq Llama-3.3-70b")
+user_model = "groq/llama-3.3-70b-versatile"
 st.sidebar.markdown("---")
 
 # User Input Section
@@ -219,8 +218,6 @@ if process_clicked:
          st.warning("⚠️ Please enter your Name!")
     elif not user_company:
          st.warning("⚠️ Please enter your Company!")
-    elif not user_api_key:
-         st.sidebar.error("⚠️ Please enter your Groq API Key to proceed!")
     else:
         with st.spinner("🤖 Our AI Agents are currently scraping the site, strategizing, and writing the perfect email..."):
             try:
@@ -229,7 +226,7 @@ if process_clicked:
                 
                 llm = LLM(
                     model=user_model,
-                    api_key=user_api_key
+                    api_key=os.getenv("GROQ_API_KEY")
                 )
 
                 # Initialize Agents
