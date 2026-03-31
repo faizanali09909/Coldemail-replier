@@ -151,12 +151,19 @@ st.sidebar.markdown("---")
 
 # User Input Section
 st.markdown("### 🎯 Target Profile & Details")
-col_url, col_name, col_company = st.columns(3)
+col_url, col_owner = st.columns(2)
 with col_url:
     target_url = st.text_input(
         "🏢 Website to analyze:",
         placeholder="e.g., https://openai.com/",
     )
+with col_owner:
+    target_owner = st.text_input(
+        "👑 Target Owner Name:",
+        placeholder="e.g., Sam Altman"
+    )
+
+col_name, col_company = st.columns(2)
 with col_name:
     user_name = st.text_input(
         "👤 Your Name:",
@@ -241,6 +248,8 @@ if process_clicked:
          st.warning("⚠️ Please enter a Target Company URL first!")
     elif not target_url.startswith("http"):
          st.warning("⚠️ Please provide a valid URL starting with http:// or https://")
+    elif not target_owner:
+         st.warning("⚠️ Please enter the Target Owner Name!")
     elif not user_name:
          st.warning("⚠️ Please enter your Name!")
     elif not user_company:
@@ -302,7 +311,7 @@ if process_clicked:
                 )
 
                 task_write = Task(
-                    description=f"Draft a cold email to the CEO of the target company. Pitch the selected service. Keep it under 150 words. Ensure the email is signed off by '{user_name}' from '{user_company}'.",
+                    description=f"Draft a cold email to the owner of the target company, {target_owner}. Pitch the selected service based on their website '{target_url}'. Keep it under 150 words. Address the email directly to {target_owner}. Ensure the email is signed off by '{user_name}' from '{user_company}'.",
                     expected_output="A professional cold email ready to send.",
                     agent=writer
                 )
