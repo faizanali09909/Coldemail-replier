@@ -19,10 +19,18 @@ from crewai_tools import ScrapeWebsiteTool
 import time
 
 load_dotenv()
-# Ensure GOOGLE_API_KEY is set for native provider support
-if not os.getenv("GOOGLE_API_KEY"):
-    os.environ["GOOGLE_API_KEY"] = os.getenv("GEMINI_API_KEY", "")
 
+# Streamlit Cloud uses st.secrets, let's sync it to os.environ if missing
+try:
+    if "GEMINI_API_KEY" in st.secrets and not os.getenv("GEMINI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    pass
+
+# Ensure GOOGLE_API_KEY is set for native provider support
+api_key = os.getenv("GEMINI_API_KEY", "")
+if not os.getenv("GOOGLE_API_KEY") and api_key:
+    os.environ["GOOGLE_API_KEY"] = api_key
 # Page configuration
 st.set_page_config(
     page_title="Cold Email Generator Pro",
@@ -237,6 +245,8 @@ if process_clicked:
          st.warning("⚠️ Please enter your Name!")
     elif not user_company:
          st.warning("⚠️ Please enter your Company!")
+    elif not os.getenv("GEMINI_API_KEY"):
+         st.error("🔑 API Key Missing! Please add your GEMINI_API_KEY to Streamlit Cloud secrets (Settings -> Secrets) or in your local .env file.")
     else:
         with st.spinner("🤖 Our AI Agents are currently scraping the site, strategizing, and writing the perfect email..."):
             try:
