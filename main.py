@@ -4,6 +4,14 @@ import re
 # Disable CrewAI telemetry BEFORE any crewai imports to avoid signal handler errors
 os.environ["CREWAI_DISABLE_TELEMETRY"] = "true"
 
+# Fix for Streamlit Cloud SQLite version requirement by ChromaDB
+try:
+    __import__('pysqlite3')
+    import sys
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+except ImportError:
+    pass
+
 import streamlit as st
 from crewai import Agent, Task, Crew, LLM, Process
 from dotenv import load_dotenv
