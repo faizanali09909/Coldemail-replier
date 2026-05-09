@@ -13,18 +13,37 @@ except ImportError:
     pass
 
 import streamlit as st
-from crewai import Agent, Task, Crew, LLM, Process
-from crewai.tools import tool
+
+# Page configuration MUST be the first Streamlit command
+st.set_page_config(
+    page_title="Cold Email Generator Pro",
+    page_icon="✨",
+    layout="wide"
+)
+
+# Diagnostic block to find the hidden ImportError
+try:
+    from crewai import Agent, Task, Crew, LLM, Process
+    from crewai.tools import tool
+    from crewai_tools import ScrapeWebsiteTool
+    from langchain_community.document_loaders import PyPDFLoader, TextLoader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_community.vectorstores import Chroma
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    import chromadb
+except ImportError as e:
+    st.error(f"❌ Critical Import Error: {e}")
+    st.info("💡 Please ensure all requirements are installed in your environment.")
+    st.code("pip install crewai crewai-tools langchain-community langchain-google-genai chromadb pypdf pysqlite3-binary")
+    st.stop()
+
 from dotenv import load_dotenv
-from crewai_tools import ScrapeWebsiteTool
 import time
 from typing import Any
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import tempfile
+import re
 
+# Load environment variables
 load_dotenv()
 
 # Streamlit Cloud uses st.secrets, let's sync it to os.environ if missing
@@ -38,12 +57,6 @@ except Exception:
 api_key = os.getenv("GEMINI_API_KEY", "")
 if not os.getenv("GOOGLE_API_KEY") and api_key:
     os.environ["GOOGLE_API_KEY"] = api_key
-# Page configuration
-st.set_page_config(
-    page_title="Cold Email Generator Pro",
-    page_icon="✨",
-    layout="wide"
-)
 
 # Custom CSS for modern styling
 st.markdown("""
