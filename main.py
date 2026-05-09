@@ -14,9 +14,16 @@ except ImportError:
 
 import streamlit as st
 from crewai import Agent, Task, Crew, LLM, Process
+from crewai.tools import tool
 from dotenv import load_dotenv
 from crewai_tools import ScrapeWebsiteTool
 import time
+from typing import Any
+from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import tempfile
 
 load_dotenv()
 
@@ -146,7 +153,7 @@ try:
     st.sidebar.success("✅ Provider Found")
 except ImportError:
     st.sidebar.error("❌ Provider Missing")
-user_model = "google/gemini-flash-latest"
+user_model = "gemini/gemini-flash-latest"
 st.sidebar.markdown("---")
 
 # User Input Section
@@ -177,16 +184,50 @@ with col_company:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Agency Services Knowledge Base (Read-only)
-AGENCY_SERVICES = """1. Web Scraping: Extracting data from websites for various purposes such as market research, competitive analysis, or content aggregation.
-2. Data Analysis: Analyzing data to uncover patterns, trends, and insights that can inform business decisions.
-3. Content Generation: Creating written content such as articles, blog posts, or social media updates"""
+# Knowledge Base Tool
+# Knowledge Base Logic
+knowledge_file = st.file_uploader("Upload Agency Profile (PDF or TXT) to customize knowledge:", type=["pdf", "txt"])
 
-with st.expander("🛠️ Agency Services Knowledge Base"):
-    st.markdown("### 📋 What services we offer")
-    st.info(AGENCY_SERVICES)
-    # Using a hidden or internal variable for the crew to use
-    agency_services = AGENCY_SERVICES
+AGENCY_SERVICES_DEFAULT = """1. Web Scraping: Extracting data from websites for various purposes.
+2. Data Analysis: Analyzing data to uncover patterns and insights.
+3. Content Generation: Creating high-quality written content using AI."""
+
+vectorstore = None
+
+if knowledge_file:
+    with st.spinner("📚 Indexing your knowledge base..."):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{knowledge_file.name.split('.')[-1]}") as tmp:
+            tmp.write(knowledge_file.getvalue())
+            tmp_path = tmp.name
+        
+        try:
+            if knowledge_file.name.endswith(".pdf"):
+                loader = PyPDFLoader(tmp_path)
+            else:
+                loader = TextLoader(tmp_path)
+            
+            docs = loader.load()
+            splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=60)
+            chunks = splitter.split_documents(docs)
+            
+            embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/gemini-embedding-001",
+                google_api_key=os.getenv("GEMINI_API_KEY")
+            )
+            vectorstore = Chroma.from_documents(chunks, embeddings)
+            st.success("✅ Knowledge base indexed successfully!")
+        except Exception as e:
+            st.error(f"Failed to index file: {e}")
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+with st.expander("📋 Current Knowledge Base Preview"):
+    if vectorstore:
+        st.info("Using uploaded documents for intelligence.")
+    else:
+        st.info(AGENCY_SERVICES_DEFAULT)
+        agency_services = AGENCY_SERVICES_DEFAULT
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -262,6 +303,15 @@ if process_clicked:
                 # Initialize Tools and LLM
                 scrape_tool = ScrapeWebsiteTool(config=dict(cert_verify=False))
                 
+                if vectorstore:
+                    @tool("Search Agency Knowledge")
+                    def knowledge_tool(query: str):
+                        """Search the agency's internal documents for services, case studies, and expertise."""
+                        results = vectorstore.similarity_search(query, k=2)
+                        return "\n".join([r.page_content for r in results])
+                else:
+                    knowledge_tool = None
+                
                 llm = LLM(
                     model=user_model,
                     api_key=os.getenv("GEMINI_API_KEY")
@@ -269,32 +319,29 @@ if process_clicked:
 
                 # Initialize Agents
                 researcher = Agent(
-                    role="Research on the Targetted Website",
-                    goal="Scrape the website and extract the information needed",
-                    backstory="You have researched many of the Websites",
+                    role="Website Researcher",
+                    goal=f"Scrape {target_url} and identify core business and pain points.",
+                    backstory="Expert at analyzing company websites to find opportunities for improvement.",
                     llm=llm,
                     tools=[scrape_tool],
-                    verbose=False,
-                    allow_delegation=True,
-                    memory=False,
+                    verbose=False
                 )
 
                 analyst = Agent(
-                    role="Analyze the data get from the targetted URL",
-                    goal="Analyze the data in website and write in short form",
-                    backstory="You are a great analyst that can analyze the data and give me the insights",
+                    role="Service Strategist",
+                    goal="Find the best matching service from our knowledge base for the prospect's needs.",
+                    backstory="Strategic consultant who excels at matching company problems with agency solutions.",
                     llm=llm,
-                    verbose=False,
-                    memory=False,
+                    tools=[knowledge_tool] if knowledge_tool else [],
+                    verbose=False
                 )
 
                 writer = Agent(
-                    role="Write a personalized cold email",
-                    goal="Create a compelling cold email based on the analyzed data",
-                    backstory="You are a skilled copywriter with experience in creating effective sales emails",
+                    role="Email Copywriter",
+                    goal="Write a persuasive, short, and personalized cold email.",
+                    backstory="World-class cold email expert who writes high-conversion pitches.",
                     llm=llm,
-                    verbose=True,
-                    memory=False,
+                    verbose=True
                 )
 
                 # Define Tasks
@@ -304,14 +351,15 @@ if process_clicked:
                     agent=researcher
                 )
 
+                knowledge_source = "Search our knowledge base using your tool." if knowledge_tool else f"Use the following static services list:\n{agency_services}"
                 task_strategize = Task(
-                    description=f"Based on the analysis, pick ONE service from our Agency Knowledge Base that solves their problem. Explain the match.\nAgency Knowledge Base:\n{agency_services}",
+                    description=f"Based on the analysis, pick ONE service that solves their problem. {knowledge_source}",
                     expected_output="The selected service and the reasoning for the match.",
                     agent=analyst
                 )
 
                 task_write = Task(
-                    description=f"Draft a cold email to the owner of the target company, {target_owner}. Pitch the selected service based on their website '{target_url}'. Keep it under 150 words. Address the email directly to {target_owner}. Ensure the email is signed off by '{user_name}' from '{user_company}'.",
+                    description=f"Draft a cold email to {target_owner}. Pitch the selected service based on their website '{target_url}'. Keep it under 150 words. Address the email directly to {target_owner}. Ensure the email is signed off by '{user_name}' from '{user_company}'.",
                     expected_output="A professional cold email ready to send.",
                     agent=writer
                 )
